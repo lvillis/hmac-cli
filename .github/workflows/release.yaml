@@ -5,10 +5,6 @@ on:
     tags:
       - '*'
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   release:
     strategy:
@@ -16,71 +12,30 @@ jobs:
         target:
           - aarch64-apple-darwin
           - aarch64-unknown-linux-musl
-          - arm-unknown-linux-musleabihf
           - armv7-unknown-linux-musleabihf
           - x86_64-apple-darwin
           - x86_64-pc-windows-msvc
           - x86_64-unknown-linux-musl
-        include:
-          - target: aarch64-apple-darwin
-            os: macos-latest
-            target_rustflags: ''
-          - target: aarch64-unknown-linux-musl
-            os: ubuntu-latest
-            target_rustflags: '--codegen linker=aarch64-linux-gnu-gcc'
-          - target: arm-unknown-linux-musleabihf
-            os: ubuntu-latest
-            target_rustflags: '--codegen linker=arm-linux-gnueabihf-gcc'
-          - target: armv7-unknown-linux-musleabihf
-            os: ubuntu-latest
-            target_rustflags: '--codegen linker=arm-linux-gnueabihf-gcc'
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            target_rustflags: ''
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            target_rustflags: ''
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-            target_rustflags: ''
-
-    runs-on: ${{matrix.os}}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust Toolchain Components
+      - name: Install Rust Toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          target: ${{ matrix.target }}
           toolchain: stable
+          override: true
+          target: ${{ matrix.target }}
 
-      - name: Install AArch64 Toolchain
-        if: ${{ matrix.target == 'aarch64-unknown-linux-musl' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install gcc-aarch64-linux-gnu aarch64-linux-musl-gcc
+      - name: Install Cross
+        run: cargo install cross
 
-      - name: Install ARM Toolchain
-        if: ${{ matrix.target == 'arm-unknown-linux-musleabihf' || matrix.target == 'armv7-unknown-linux-musleabihf' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install gcc-arm-linux-gnueabihf arm-linux-musleabihf-gcc
-
-      - name: Install X86_64 Toolchain
-        if: ${{ matrix.target == 'x86_64-unknown-linux-musl' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install musl-tools
-
-      - name: Ref Type
-        id: ref-type
-        run: cargo run --package ref-type -- --reference ${{ github.ref }}
-
-      - name: chmod
-        id: chmod
-        run: chmod +x ./bin/package
+      - name: Build with Cross
+        run: cross build --release --target ${{ matrix.target }}
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
 
       - name: Package
         id: package
@@ -88,7 +43,6 @@ jobs:
           TARGET: ${{ matrix.target }}
           REF: ${{ github.ref }}
           OS: ${{ matrix.os }}
-          TARGET_RUSTFLAGS: ${{ matrix.target_rustflags }}
         run: ./bin/package
         shell: bash
 
