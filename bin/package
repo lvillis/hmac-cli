@@ -8,12 +8,12 @@ mkdir -p $DIST
 echo "Packaging for $TARGET..."
 
 RUSTFLAGS="--deny warnings $TARGET_RUSTFLAGS" \
-  cargo build --bin tcping --target $TARGET --release
+  cargo build --bin hmac --target $TARGET --release
 
-cp target/$TARGET/release/tcping $DIST/
+cp target/$TARGET/release/hmac $DIST/
 
 cd $DIST
-ARCHIVE="tcping-$VERSION-$TARGET.tar.gz"
+ARCHIVE="hmac-$VERSION-$TARGET.tar.gz"
 tar czf $ARCHIVE *
 
 # List the contents of the $DIST directory
