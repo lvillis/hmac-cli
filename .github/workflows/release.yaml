@@ -62,6 +62,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install gcc-aarch64-linux-gnu
           echo "CC=aarch64-linux-musl-gcc" >> $GITHUB_ENV
+          echo "TARGET_CC=aarch64-linux-musl-gcc" >> $GITHUB_ENV
 
       - name: Install ARM Toolchain
         if: ${{ matrix.target == 'arm-unknown-linux-musleabihf' || matrix.target == 'armv7-unknown-linux-musleabihf' }}
@@ -69,6 +70,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install gcc-arm-linux-gnueabihf
           echo "CC=arm-linux-musleabihf-gcc" >> $GITHUB_ENV
+          echo "TARGET_CC=arm-linux-musleabihf-gcc" >> $GITHUB_ENV
 
       - name: Install X86_64 Toolchain
         if: ${{ matrix.target == 'x86_64-unknown-linux-musl' }}
