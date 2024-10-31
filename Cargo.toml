@@ -1,13 +1,16 @@
 [package]
 name = "hmac-cli"
 description = "🛠️ A command-line tool for generating HMAC signatures."
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "MIT"
 
 [[bin]]
 name = "hmac"
 path = "src/main.rs"
+
+[workspace]
+members = [".", "bin/ref-type"]
 
 [dependencies]
 clap = { version = "4.5.20", features = ["derive", "env"] }
