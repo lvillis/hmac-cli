@@ -59,16 +59,16 @@ jobs:
       - name: Install AArch64 Toolchain
         if: ${{ matrix.target == 'aarch64-unknown-linux-musl' }}
         run: |
-          export CC=aarch64-linux-musl-gcc
           sudo apt-get update
           sudo apt-get install gcc-aarch64-linux-gnu
+          echo "CC=aarch64-linux-musl-gcc" >> $GITHUB_ENV
 
       - name: Install ARM Toolchain
         if: ${{ matrix.target == 'arm-unknown-linux-musleabihf' || matrix.target == 'armv7-unknown-linux-musleabihf' }}
         run: |
-          export CC=arm-linux-musleabihf-gcc
           sudo apt-get update
           sudo apt-get install gcc-arm-linux-gnueabihf
+          echo "CC=arm-linux-musleabihf-gcc" >> $GITHUB_ENV
 
       - name: Install X86_64 Toolchain
         if: ${{ matrix.target == 'x86_64-unknown-linux-musl' }}
