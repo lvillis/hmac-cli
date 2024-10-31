@@ -24,6 +24,22 @@
 ## Example
 
 ```bash
+$ hmac -h
+Usage: hmac.exe [OPTIONS] --url <URL>
+
+Options:
+  -a, --ak <AK>                Access Key ID (can be provided via config file `ak`)
+  -s, --sk <SK>                Secret Key (can be provided via config file `sk`)
+  -m, --method <METHOD>        Request method (default: POST) [default: POST]
+  -u, --url <URL>              Request URL
+  -b, --body <BODY>            Request body (JSON format)
+  -g, --gateway <GATEWAY>      Gateway type (default: traefik) [default: traefik] [possible values: apisix, traefik, higress]
+      --algorithm <ALGORITHM>  HMAC algorithm (default: hmac-sha256) [default: hmac-sha256] [possible values: hmac-sha256, hmac-sha384, hmac-sha512]
+  -h, --help                   Print help
+  -V, --version                Print version
+```
+
+```bash
 # Generate an HMAC signature for a POST request
 $ hmac --ak <HMAC_AK> --sk <HMAC_SK> --method POST --url https://exmaple.com/api --body "{\"hello\":\"world\"}" --gateway traefik
 
