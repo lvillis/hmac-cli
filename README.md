@@ -31,5 +31,8 @@ $ hmac --ak <HMAC_AK> --sk <HMAC_SK> --method POST --url https://exmaple.com/api
 $ hmac --method POST --url https://exmaple.com/api --body "{\"hello\":\"world\"}" --gateway apisix
 
 # AK\SK can be set in a configuration file (~/.hmac/config.toml)
+# vi ~/.hmac/config.toml
+# HMAC_AK = "<HMAC_AK>"
+# HMAC_SK = "<HMAC_SK>"
 $ hmac --method POST --url https://exmaple.com/api --body "{\"hello\":\"world\"}" --gateway higress
 ```
