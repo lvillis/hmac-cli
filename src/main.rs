@@ -11,7 +11,6 @@ use tracing::debug;
 use tracing_subscriber::FmtSubscriber;
 use serde::Deserialize;
 use serde_json::Value;
-use std::path::PathBuf;
 use std::str::FromStr;
 use dirs::home_dir;
 use std::fs;
@@ -32,20 +31,48 @@ pub struct TraefikSigner {
     pub ak: String,
     pub sk: String,
     pub algorithm: String,
+    pub signing_path: Option<String>, // Changed to singular and Option<String>
 }
 
 impl HmacSigner for TraefikSigner {
     fn generate_authorization_header(&self, method: &str, url: &str) -> Result<(String, String), Box<dyn Error>> {
         let parsed_url = Url::parse(url)?;
-        let host = match parsed_url.port() {
-            Some(port) => format!("{}:{}", parsed_url.host_str().unwrap(), port),
-            None => parsed_url.host_str().unwrap().to_string(),
+        let host = parsed_url.host_str().ok_or("Invalid URL host")?.to_string();
+        let host = if let Some(port) = parsed_url.port() {
+            format!("{}:{}", host, port)
+        } else {
+            host
         };
         let path = parsed_url.path();
-        let query = parsed_url.query().map(|q| format!("?{}", q)).unwrap_or_default();
+
+        debug!("Original path: {}", path);
+
+        // Check if the path matches signing_path
+        if let Some(signing_path) = &self.signing_path {
+            if path == signing_path || path.ends_with(signing_path) {
+                debug!("Path '{}' is included for HMAC signing.", path);
+                // Use signing_path as the path in the signing string
+                self.generate_signing_string(method, host, signing_path)
+            } else {
+                debug!("Path '{}' is not included for HMAC signing. Skipping signing.", path);
+                Err("Path is not included for HMAC signing.".into())
+            }
+        } else {
+            debug!("No signing path specified. Skipping signing.");
+            Err("Signing path not specified.".into())
+        }
+    }
+}
+
+impl TraefikSigner {
+    fn generate_signing_string(&self, method: &str, host: String, path: &str) -> Result<(String, String), Box<dyn Error>> {
+        // Parse the path as a URL to extract query parameters if any
+        let parsed_path = Url::parse(&format!("http://dummy{}", path))?; // Use dummy host to parse the path
+        let query = parsed_path.query().map(|q| format!("?{}", q)).unwrap_or_default();
         let full_path = format!("{}{}", path, query);
 
-        let created = Utc::now().timestamp();
+        // Adjust created time by subtracting 30 seconds to account for clock skew
+        let created = Utc::now().timestamp() - 30;
         let expires = created + 300; // 5 minutes validity
 
         // Build the signing string
@@ -62,27 +89,9 @@ impl HmacSigner for TraefikSigner {
 
         // Calculate HMAC signature
         let signature = match self.algorithm.as_str() {
-            "hmac-sha256" => {
-                let mut mac = HmacSha256::new_from_slice(self.sk.as_bytes())
-                    .map_err(|_| "Invalid HMAC key length")?;
-                mac.update(signing_string.as_bytes());
-                let result = mac.finalize().into_bytes();
-                general_purpose::STANDARD.encode(result)
-            },
-            "hmac-sha384" => {
-                let mut mac = HmacSha384::new_from_slice(self.sk.as_bytes())
-                    .map_err(|_| "Invalid HMAC key length")?;
-                mac.update(signing_string.as_bytes());
-                let result = mac.finalize().into_bytes();
-                general_purpose::STANDARD.encode(result)
-            },
-            "hmac-sha512" => {
-                let mut mac = HmacSha512::new_from_slice(self.sk.as_bytes())
-                    .map_err(|_| "Invalid HMAC key length")?;
-                mac.update(signing_string.as_bytes());
-                let result = mac.finalize().into_bytes();
-                general_purpose::STANDARD.encode(result)
-            },
+            "hmac-sha256" => Self::calculate_hmac::<HmacSha256>(&self.sk, &signing_string)?,
+            "hmac-sha384" => Self::calculate_hmac::<HmacSha384>(&self.sk, &signing_string)?,
+            "hmac-sha512" => Self::calculate_hmac::<HmacSha512>(&self.sk, &signing_string)?,
             _ => return Err("Unsupported HMAC algorithm".into()),
         };
 
@@ -100,6 +109,17 @@ impl HmacSigner for TraefikSigner {
 
         Ok((signing_string, auth_header))
     }
+
+    fn calculate_hmac<M: Mac>(sk: &str, data: &str) -> Result<String, Box<dyn Error>>
+    where
+        M: KeyInit,
+    {
+        let mut mac = M::new_from_slice(sk.as_bytes())
+            .map_err(|_| "Invalid HMAC key length")?;
+        mac.update(data.as_bytes());
+        let result = mac.finalize().into_bytes();
+        Ok(general_purpose::STANDARD.encode(result))
+    }
 }
 
 /// Apisix HMAC Signer (Placeholder)
@@ -107,6 +127,7 @@ pub struct ApisixSigner {
     pub ak: String,
     pub sk: String,
     pub algorithm: String,
+    pub signing_path: Option<String>, // Changed to singular and Option<String>
 }
 
 impl HmacSigner for ApisixSigner {
@@ -121,6 +142,7 @@ pub struct HigressSigner {
     pub ak: String,
     pub sk: String,
     pub algorithm: String,
+    pub signing_path: Option<String>, // Changed to singular and Option<String>
 }
 
 impl HmacSigner for HigressSigner {
@@ -151,11 +173,32 @@ impl FromStr for Gateway {
 }
 
 /// Factory function to create the appropriate signer based on gateway type
-fn create_signer(gateway: Gateway, ak: String, sk: String, algorithm: String) -> Box<dyn HmacSigner> {
+fn create_signer(
+    gateway: Gateway,
+    ak: String,
+    sk: String,
+    algorithm: String,
+    signing_path: Option<String>, // Changed parameter to Option<String>
+) -> Result<Box<dyn HmacSigner>, Box<dyn Error>> {
     match gateway {
-        Gateway::Traefik => Box::new(TraefikSigner { ak, sk, algorithm }),
-        Gateway::Apisix => Box::new(ApisixSigner { ak, sk, algorithm }),
-        Gateway::Higress => Box::new(HigressSigner { ak, sk, algorithm }),
+        Gateway::Traefik => Ok(Box::new(TraefikSigner {
+            ak,
+            sk,
+            algorithm,
+            signing_path,
+        })),
+        Gateway::Apisix => Ok(Box::new(ApisixSigner {
+            ak,
+            sk,
+            algorithm,
+            signing_path,
+        })),
+        Gateway::Higress => Ok(Box::new(HigressSigner {
+            ak,
+            sk,
+            algorithm,
+            signing_path,
+        })),
     }
 }
 
@@ -190,19 +233,24 @@ struct Args {
     /// HMAC algorithm (default: hmac-sha256)
     #[arg(long, default_value = "hmac-sha256", value_parser = ["hmac-sha256", "hmac-sha384", "hmac-sha512"])]
     algorithm: String,
+
+    /// Path to include for HMAC signing
+    #[arg(long)]
+    signing_path: Option<String>, // Changed parameter to singular and Option<String>
 }
 
 #[derive(Deserialize)]
 struct Config {
     ak: Option<String>,
     sk: Option<String>,
+    signing_path: Option<String>, // Changed field name and type
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize the logging subscriber
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(tracing::Level::INFO)
+        .with_max_level(tracing::Level::DEBUG) // Changed to more detailed log level
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
@@ -210,16 +258,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let home_dir = home_dir().ok_or("Unable to determine home directory")?;
 
     // Construct the path to the configuration file, e.g., ~/.hmac/config.toml
-    let mut config_path = PathBuf::from(home_dir);
-    config_path.push(".hmac");
-    config_path.push("config.toml");
+    let config_path = home_dir.join(".hmac").join("config.toml");
 
     // Load and parse the configuration file (if it exists)
     let config = if config_path.exists() {
         let config_content = fs::read_to_string(&config_path)?;
         toml::from_str::<Config>(&config_content)?
     } else {
-        Config { ak: None, sk: None }
+        Config { ak: None, sk: None, signing_path: None } // Updated field names
     };
 
     if config_path.exists() {
@@ -230,15 +276,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let args = Args::parse();
 
-    // Retrieve ak and sk, prioritizing command-line arguments over config file
+    // Retrieve ak, sk, and signing_path, prioritizing command-line arguments over config file
     let ak = args.ak.or(config.ak).ok_or("Access Key (ak) is not provided. Use --ak or set it in config file.")?;
     let sk = args.sk.or(config.sk).ok_or("Secret Key (sk) is not provided. Use --sk or set it in config file.")?;
+    let signing_path = args.signing_path.or(config.signing_path);
 
     // Parse the gateway type
     let gateway: Gateway = args.gateway.parse().map_err(|e| format!("Error parsing gateway: {}", e))?;
 
-    // Create the corresponding signer
-    let signer = create_signer(gateway, ak, sk, args.algorithm);
+    // Create the corresponding signer, passing the signing_path
+    let signer = create_signer(
+        gateway,
+        ak,
+        sk,
+        args.algorithm,
+        signing_path, // Pass the new parameter
+    )?;
 
     // Generate the Authorization header
     let (signing_string, auth_header) = signer.generate_authorization_header(
@@ -250,6 +303,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     debug!("Authorization Header:\n{}", auth_header);
 
     let client = reqwest::Client::builder()
+        .no_proxy()
+        .danger_accept_invalid_certs(true)
         .timeout(Duration::from_secs(600))
         .build()?;
     let mut request = client
