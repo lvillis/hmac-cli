@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.18] - 2024-12-17
+
+### 🐛 Bug Fixes
+
+- Typo
+
 ## [0.1.17] - 2024-12-17
 
 ### 🚀 Features
@@ -13,6 +19,7 @@ All notable changes to this project will be documented in this file.
 - *(ci)* Use cross
 - Use cargo-release
 - Add CHANGELOG.md
+- Release hmac-cli version 0.1.17
 
 ## [0.1.16] - 2024-10-31
 
