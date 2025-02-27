@@ -2,11 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.19] - 2025-02-27
+
+### ⚙️ Miscellaneous Tasks
+
+- Bump deps
+
 ## [0.1.18] - 2024-12-17
 
 ### 🐛 Bug Fixes
 
 - Typo
+
+### ⚙️ Miscellaneous Tasks
+
+- Release hmac-cli version 0.1.18
 
 ## [0.1.17] - 2024-12-17
 
