@@ -2,11 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.20] - 2025-02-27
+
+### 🚀 Features
+
+- Add Dockerfile
+
+### ⚙️ Miscellaneous Tasks
+
+- *(ci)* Add docker
+- *(ci)* Add docker
+
 ## [0.1.19] - 2025-02-27
 
 ### ⚙️ Miscellaneous Tasks
 
 - Bump deps
+- Release hmac-cli version 0.1.19
 
 ## [0.1.18] - 2024-12-17
 
