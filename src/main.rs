@@ -250,7 +250,7 @@ struct Config {
 async fn main() -> Result<(), Box<dyn Error>> {
     // Initialize the logging subscriber
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(tracing::Level::DEBUG) // Changed to more detailed log level
+        .with_max_level(tracing::Level::INFO) // Changed to more detailed log level
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
