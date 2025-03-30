@@ -9,9 +9,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Start Falco
+        uses: falcosecurity/falco-actions/start@main
+        with:
+          mode: live
+          falco-version: '0.39.0'
+          verbose: true
+
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -24,3 +35,9 @@ jobs:
 
       - name: Run tests
         run: cargo test --verbose
+
+      - name: Stop Falco
+        uses: falcosecurity/falco-actions/start@main
+        with:
+          mode: live
+          verbose: true
