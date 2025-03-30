@@ -37,7 +37,7 @@ jobs:
         run: cargo test --verbose
 
       - name: Stop Falco
-        uses: falcosecurity/falco-actions/start@main
+        uses: falcosecurity/falco-actions/stop@main
         with:
           mode: live
           verbose: true
