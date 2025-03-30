@@ -24,7 +24,7 @@ jobs:
           verbose: true
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           profile: minimal
           toolchain: stable
